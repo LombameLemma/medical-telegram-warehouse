@@ -1,0 +1,55 @@
+version: 2
+
+sources:
+  - name: raw
+    description: Raw data loaded from Telegram API
+    database: medical_warehouse
+    schema: raw
+    tables:
+      - name: telegram_messages
+        description: Raw telegram messages scraped from medical channels
+        columns:
+          - name: message_id
+            description: Unique message identifier from Telegram
+            tests:
+              - not_null
+          - name: channel_username
+            description: Channel username
+            tests:
+              - not_null
+          - name: message_date
+            description: Timestamp when message was posted
+            tests:
+              - not_null
+          - name: message_text
+            description: Full text content of the message
+          - name: has_media
+            description: Boolean indicating if message contains media
+          - name: image_path
+            description: Path to downloaded image file if applicable
+          - name: views
+            description: Number of views on the message
+          - name: forwards
+            description: Number of times message was forwarded
+          - name: scraped_at
+            description: Timestamp when data was scraped
+          - name: loaded_at
+            description: Timestamp when data was loaded to database
+      
+      - name: yolo_detections
+        description: YOLO object detection results for images
+        columns:
+          - name: message_id
+            description: Message ID corresponding to the image
+          - name: channel_name
+            description: Channel name
+          - name: image_path
+            description: Path to the image file
+          - name: image_category
+            description: Classified category (promotional, product_display, lifestyle, other)
+          - name: detected_classes
+            description: Comma-separated list of detected object classes
+          - name: num_detections
+            description: Number of objects detected in the image
+          - name: avg_confidence
+            description: Average confidence score of detections

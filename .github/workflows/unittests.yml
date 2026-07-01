@@ -1,0 +1,78 @@
+name: Unit Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: medical_warehouse_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Set up environment variables
+      run: |
+        echo "DB_HOST=localhost" >> $GITHUB_ENV
+        echo "DB_PORT=5432" >> $GITHUB_ENV
+        echo "DB_NAME=medical_warehouse_test" >> $GITHUB_ENV
+        echo "DB_USER=postgres" >> $GITHUB_ENV
+        echo "DB_PASSWORD=postgres" >> $GITHUB_ENV
+    
+    - name: Initialize database
+      run: |
+        psql -h localhost -U postgres -d medical_warehouse_test -f scripts/init_db.sql
+      env:
+        PGPASSWORD: postgres
+    
+    - name: Run linting
+      run: |
+        pip install flake8 black
+        flake8 src/ api/ --max-line-length=120 --exclude=__pycache__,venv --exit-zero
+        black --check src/ api/ --line-length=120 || true
+    
+    - name: Run tests
+      run: |
+        pytest tests/ -v --tb=short
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/medical_warehouse_test
+    
+    - name: Test dbt models (dry run)
+      run: |
+        cd medical_warehouse
+        dbt deps
+        dbt parse
+      env:
+        DB_HOST: localhost
+        DB_PORT: 5432
+        DB_NAME: medical_warehouse_test
+        DB_USER: postgres
+        DB_PASSWORD: postgres
